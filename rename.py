@@ -1,6 +1,7 @@
 import os
 import shutil
 import requests
+import csv
 
 basedir = r"F:\working\python\scrapping\new\\"
 def get_file_key(filename):
@@ -43,6 +44,7 @@ def vin_decode(vin):
     return res
 
 source_folder = "../Make_Model_VIN_Key"
+# source_folder = "../vpic"
 def rename_file(directory):
     for root, dirs, files in os.walk(directory):
         for file in files:
@@ -60,8 +62,48 @@ def rename_file(directory):
 
 # rename_file(source_folder)
 
-#monroneylabels
-def vin_decode_monroneylabels(vin):
-    token = ""
-    URL = "https://monroneylabels.com/cars/vin.json?single_access_token=%s[vin]=%s" % (token, vin)
-    res = requests.get(url=URL)
+#get year from local file
+def get_year(vin):
+    vin_array = []
+    year_array = []
+    file_path = "vehicle_images.csv"
+    with open(file_path) as f:
+        reader = csv.reader(f)
+        for row in reader:
+            vin_array.append(row[0])
+            year_array.append(row[5])
+    if (vin in vin_array):
+        index = vin_array.index(vin)
+        return year_array[index]
+
+def get_year_vpic(vin):
+    URL = "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/%s?format=json" % vin
+    res = requests.get(url=URL).json()
+    return res['Results'][0]['ModelYear']
+
+def rename_file_csv(directory):
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            print(file)
+            if len(file.split("_")) > 4:
+                continue
+            vin = file.split("_")[2]
+            year = get_year_vpic(vin=vin)
+            if year:
+                filename_array = file.split("_")
+                new_name = "%s_%s_%s_%s_%s" % (filename_array[0], filename_array[1], year, filename_array[2], filename_array[3])
+                print(new_name)
+                os.rename(os.path.join(root, file), os.path.join(source_folder, new_name))
+# rename_file_csv(source_folder)
+
+def file_review(directory):
+    count = 0
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            print(file)
+            if len(file.split("_")) > 4:
+                count += 1
+    print(count)
+
+file_review(source_folder)
+
