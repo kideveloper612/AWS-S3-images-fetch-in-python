@@ -2,6 +2,7 @@ import os
 import shutil
 import requests
 import csv
+import boto3
 
 basedir = r"F:\working\python\scrapping\new\\"
 def get_file_key(filename):
@@ -96,14 +97,57 @@ def rename_file_csv(directory):
                 os.rename(os.path.join(root, file), os.path.join(source_folder, new_name))
 # rename_file_csv(source_folder)
 
-def file_review(directory):
-    count = 0
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            print(file)
-            if len(file.split("_")) > 4:
-                count += 1
-    print(count)
+def file_upload_S3():
 
-file_review(source_folder)
+    def get_s3_keys(bucket, prefix='', suffix=''):
+        """Get a list of keys in an S3 bucket."""
+        s3 = boto3.client('s3')
+        kwargs = {'Bucket': bucket}
+
+        # If the prefix is a single string (not a tuple of strings), we can
+        # do the filtering directly in the S3 API.
+        if isinstance(prefix, str):
+            kwargs['Prefix'] = prefix
+
+        while True:
+
+            # The S3 API response is a large blob of metadata.
+            # 'Contents' contains information about the listed objects.
+            resp = s3.list_objects_v2(**kwargs)
+            for obj in resp['Contents']:
+                key = obj['Key']
+                if key.startswith(prefix) and key.endswith(suffix):
+                    print(key)
+                    yield key
+            try:
+                kwargs['ContinuationToken'] = resp['NextContinuationToken']
+            except KeyError:
+                break
+
+    bucket = "rev-vehicle-images"
+    folder = "Make_Model_Year_Vin_Key"
+    if __name__ == '__main__':
+        files = os.listdir(source_folder)
+        key_list = []
+        for key in get_s3_keys(bucket):
+            key_list.append(key)
+        print(len(key_list))
+        exit()
+        for file in files:
+            object_key = "%s/%s" % (folder, file)
+            print(object_key)
+            if object_key in key_list:
+                print("This file exist in AWS S3. Continuing")
+                continue
+            else:
+                s3_upload = boto3.resource('s3')
+                try:
+                    source_file = "%s/%s" % (source_folder, file)
+                    print("--------------------------------------------------------------------------------------------------------------------------")
+                    print(source_file)
+                    print(object_key)
+                    s3_upload.Bucket(bucket).upload_file(source_file, object_key)
+                except Exception as e:
+                    print(e)
+file_upload_S3()
 
