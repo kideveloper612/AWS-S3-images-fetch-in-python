@@ -45,7 +45,6 @@ def vin_decode(vin):
     return res
 
 source_folder = "../Make_Model_VIN_Key"
-# source_folder = "../vpic"
 def rename_file(directory):
     for root, dirs, files in os.walk(directory):
         for file in files:
